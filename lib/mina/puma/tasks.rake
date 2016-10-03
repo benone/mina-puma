@@ -6,25 +6,25 @@ namespace :puma do
 
   set :puma_role,      -> { user }
   set :puma_env,       -> { fetch(:rails_env, 'production') }
-  set :puma_config,    -> { "#{deploy_to}/#{shared_path}/config/puma.rb" }
-  set :puma_socket,    -> { "#{deploy_to}/#{shared_path}/tmp/sockets/puma.sock" }
-  set :puma_state,     -> { "#{deploy_to}/#{shared_path}/tmp/sockets/puma.state" }
-  set :puma_pid,       -> { "#{deploy_to}/#{shared_path}/tmp/pids/puma.pid" }
-  set :puma_cmd,       -> { "#{bundle_prefix} puma" }
-  set :pumactl_cmd,    -> { "#{bundle_prefix} pumactl" }
-  set :pumactl_socket, -> { "#{deploy_to}/#{shared_path}/tmp/sockets/pumactl.sock" }
+  set :puma_config,    -> { "#{fetch(:shared_path)}/config/puma.rb" }
+  set :puma_socket,    -> { "#{fetch(:shared_path)}/tmp/sockets/puma.sock" }
+  set :puma_state,     -> { "#{fetch(:shared_path)}/tmp/sockets/puma.state" }
+  set :puma_pid,       -> { "#{fetch(:shared_path)}/tmp/pids/puma.pid" }
+  set :puma_cmd,       -> { "#{fetch(:bundle_prefix)} puma" }
+  set :pumactl_cmd,    -> { "#{fetch(:bundle_prefix)} pumactl" }
+  set :pumactl_socket, -> { "#{fetch(:shared_path)}/tmp/sockets/pumactl.sock" }
 
 
   desc 'Start puma'
   task :start => :environment do
-    queue! %[
-      if [ -e '#{pumactl_socket}' ]; then
+    command %[
+      if [ -e '#{fetch(:pumactl_socket)}' ]; then
         echo 'Puma is already running!';
       else
-        if [ -e '#{puma_config}' ]; then
-          cd #{deploy_to}/#{current_path} && #{puma_cmd} -q -d -e #{puma_env} -C #{puma_config}
+        if [ -e '#{fetch(:puma_config)}' ]; then
+          cd #{fetch(:current_path)} && #{fetch(:puma_cmd)} -q -d -e #{fetch(:puma_env)} -C #{fetch(:puma_config)}
         else
-          cd #{deploy_to}/#{current_path} && #{puma_cmd} -q -d -e #{puma_env} -b 'unix://#{puma_socket}' -S #{puma_state} --pidfile #{puma_pid} --control 'unix://#{pumactl_socket}'
+          cd #{fetch(:current_path)} && #{fetch(:puma_cmd)} -q -d -e #{fetch(:puma_env)} -b 'unix://#{fetch(:puma_socket)}' -S #{fetch(:puma_state)} --pidfile #{fetch(:puma_pid)} --control 'unix://#{fetch(:pumactl_socket)}'
         fi
       fi
     ]
@@ -32,10 +32,10 @@ namespace :puma do
 
   desc 'Stop puma'
   task stop: :environment do
-    queue! %[
-      if [ -e '#{pumactl_socket}' ]; then
-        cd #{deploy_to}/#{current_path} && #{pumactl_cmd} -S #{puma_state} stop
-        rm -f '#{pumactl_socket}'
+    command %[
+      if [ -e '#{fetch(:pumactl_socket)}' ]; then
+        cd #{fetch(:current_path)} && #{fetch(:pumactl_cmd)} -S #{fetch(:puma_state)} stop
+        rm -f '#{fetch(:pumactl_socket)}'
       else
         echo 'Puma is not running!';
       fi
@@ -50,9 +50,9 @@ namespace :puma do
 
   desc 'Restart puma (phased restart)'
   task phased_restart: :environment do
-    queue! %[
-      if [ -e '#{pumactl_socket}' ]; then
-        cd #{deploy_to}/#{current_path} && #{pumactl_cmd} -S #{puma_state} --pidfile #{puma_pid} phased-restart
+    command %[
+      if [ -e '#{fetch(:pumactl_socket)}' ]; then
+        cd #{fetch(:current_path)} && #{fetch(:pumactl_cmd)} -S #{fetch(:puma_state)} --pidfile #{fetch(:puma_pid)} phased-restart
       else
         echo 'Puma is not running!';
       fi
